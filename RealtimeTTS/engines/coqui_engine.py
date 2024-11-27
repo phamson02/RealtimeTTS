@@ -759,7 +759,7 @@ class CoquiEngine(BaseEngine):
 
 
                     # Send silent audio
-                    sample_rate = config.audio.sample_rate
+                    sample_rate = config.audio.output_sample_rate
 
                     end_sentence_delimeters = ".!?…。¡¿"
                     mid_sentence_delimeters = ";:,\n()[]{}-“”„”—/|《》"
