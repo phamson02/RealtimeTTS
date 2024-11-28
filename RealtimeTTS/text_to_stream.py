@@ -465,7 +465,11 @@ class TextToAudioStream:
                         self.wf.close()
                         self.wf = None
 
-            if len(self.char_iter.items) > 0 and self.char_iter.iterated_text == "":
+            if (
+                len(self.char_iter.items) > 0
+                and self.char_iter.iterated_text == ""
+                and (not self.char_iter.immediate_stop.is_set())
+            ):
                 # new text was feeded while playing audio but after the last character was processed
                 # we need to start another play() call (!recursively!)
                 self.play(
