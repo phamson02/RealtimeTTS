@@ -101,6 +101,7 @@ class TextToAudioStream:
             self.engines = [engine]
 
         self.audio_queue = queue.Queue()
+        self.voice_path = ""
 
         self.load_engine(self.engines[self.engine_index])
 
@@ -408,7 +409,9 @@ class TextToAudioStream:
                                 if before_sentence_synthesized:
                                     before_sentence_synthesized(sentence)
                                 success = self.engine.synthesize(
-                                    sentence, audio_queue=self.audio_queue
+                                    sentence,
+                                    voice_path=self.voice_path,
+                                    audio_queue=self.audio_queue,
                                 )
                                 if success:
                                     if on_sentence_synthesized:

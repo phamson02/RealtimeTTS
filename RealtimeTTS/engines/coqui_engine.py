@@ -1,3 +1,4 @@
+from functools import lru_cache
 import queue
 from .base_engine import BaseEngine
 import torch.multiprocessing as mp
@@ -357,10 +358,12 @@ class CoquiEngine(BaseEngine):
 
         logging.info("Starting CoquiEngine")
 
-        def get_conditioning_latents(filenames: Union[str, List[str]], tts):
+        @lru_cache
+        def get_conditioning_latents(filenames: Union[str, List[str]]):
             """
             Method still needs some rework
             """
+            assert tts is not None
             if not isinstance(filenames, list):
                 filenames = [filenames]
 
@@ -612,7 +615,7 @@ class CoquiEngine(BaseEngine):
             tts = load_model(checkpoint, tts)
 
             gpt_cond_latent, speaker_embedding = get_conditioning_latents(
-                cloning_reference_wav, tts
+                cloning_reference_wav
             )
 
         except Exception as e:
@@ -648,7 +651,7 @@ class CoquiEngine(BaseEngine):
                     new_wav_path = data["cloning_reference_wav"]
                     logging.info(f"Updating reference WAV to {new_wav_path}")
                     gpt_cond_latent, speaker_embedding = get_conditioning_latents(
-                        new_wav_path, tts
+                        new_wav_path
                     )
                     conn.send(("success", "Reference updated successfully"))
 
@@ -670,7 +673,10 @@ class CoquiEngine(BaseEngine):
                 elif command == "synthesize":
                     text = data["text"]
                     language = data["language"]
-
+                    new_wav_path = data["cloning_reference_wav"]
+                    gpt_cond_latent, speaker_embedding = get_conditioning_latents(
+                        new_wav_path
+                    )
                     logging.debug(f"Starting inference for text: {text}")
 
                     time_start = time.time()
@@ -820,8 +826,6 @@ class CoquiEngine(BaseEngine):
         """
         Send an 'update_reference' command and wait for a response.
         """
-        if not isinstance(cloning_reference_wav, list):
-            cloning_reference_wav = [cloning_reference_wav]
         self.send_command(
             "update_reference", {"cloning_reference_wav": cloning_reference_wav}
         )
@@ -929,7 +933,7 @@ class CoquiEngine(BaseEngine):
 
         return text
 
-    def synthesize(self, text: str, audio_queue: queue.Queue) -> bool:
+    def synthesize(self, text: str, voice_path: str, audio_queue: queue.Queue) -> bool:
         """
         Synthesizes text to audio stream.
 
@@ -944,7 +948,13 @@ class CoquiEngine(BaseEngine):
             if len(text) < 1:
                 return
 
-            data = {"text": text, "language": self.language}
+            data = {
+                "text": text,
+                "language": self.language,
+                "cloning_reference_wav": voice_path
+                if voice_path
+                else self.cloning_reference_wav,
+            }
             self.send_command("synthesize", data)
 
             status, result = self.parent_synthesize_pipe.recv()
